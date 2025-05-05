@@ -40,7 +40,7 @@ class AuctionAppUI:
 
         # Load only background image
         try:
-            bg_img = Image.open('f:/auction/images/background.jpg')
+            bg_img = Image.open(r'F:\auction\images\reg_bg.jpg')
             self.bg_image = ImageTk.PhotoImage(bg_img)
         except Exception as e:
             print(f"Warning: Unable to load background image. Error: {e}")
@@ -307,41 +307,84 @@ class AuctionAppUI:
     def show_register_screen(self):
         self.clear_frame()
 
-        tk.Label(self.main_frame, text="Register User",
-                 font=('Arial', 16)).pack(pady=10)
+        # Create a container for the background
+        bg_container = tk.Frame(self.main_frame)
+        bg_container.place(relx=0.5, rely=0.5, anchor='center', width=800, height=600)
 
-        tk.Label(self.main_frame, text="Username:").pack()
-        self.reg_username_entry = tk.Entry(self.main_frame)
-        self.reg_username_entry.pack()
+        # Set background image if available
+        try:
+            bg_img = Image.open(r'f:/auction/images/reg_bg.png')
+            bg_img = bg_img.resize((800, 600), Image.Resampling.LANCZOS)
+            self.register_bg_image = ImageTk.PhotoImage(bg_img)
+            bg_label = tk.Label(bg_container, image=self.register_bg_image)
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        except Exception as e:
+            print(f"Warning: Unable to load background image. Error: {e}")
+            # Use a plain background color as a fallback
+            bg_container.configure(bg=self.colors['light_gray'])
 
-        tk.Label(self.main_frame, text="Password:").pack()
-        self.reg_password_entry = tk.Entry(self.main_frame, show="*")
-        self.reg_password_entry.pack()
+        # Create a container for the registration form
+        form_container = tk.Frame(
+            bg_container,
+            bg=self.colors['light_gray'],  # Use a light gray background for the form
+            padx=40,
+            pady=20,
+            relief='solid',
+            borderwidth=1
+        )
+        form_container.place(relx=0.5, rely=0.5, anchor='center')
 
-        tk.Label(self.main_frame, text="Email:").pack()
-        self.reg_email_entry = tk.Entry(self.main_frame)
-        self.reg_email_entry.pack()
+        # Title
+        tk.Label(
+            form_container,
+            text="Register User",
+            font=self.fonts['header'],
+            bg=self.colors['light_gray'],
+            fg=self.colors['primary']
+        ).pack(pady=10)
 
-        tk.Label(self.main_frame, text="First Name:").pack()
-        self.reg_first_name_entry = tk.Entry(self.main_frame)
-        self.reg_first_name_entry.pack()
+        # Form fields
+        fields = [
+            ("Username", "reg_username_entry"),
+            ("Password", "reg_password_entry"),
+            ("Email", "reg_email_entry"),
+            ("First Name", "reg_first_name_entry"),
+            ("Last Name", "reg_last_name_entry"),
+            ("Phone Number", "reg_phone_entry"),
+            ("Address", "reg_address_entry")
+        ]
 
-        tk.Label(self.main_frame, text="Last Name:").pack()
-        self.reg_last_name_entry = tk.Entry(self.main_frame)
-        self.reg_last_name_entry.pack()
+        for label_text, field_name in fields:
+            tk.Label(
+                form_container,
+                text=label_text,
+                font=self.fonts['body'],
+                bg=self.colors['light_gray'],
+                fg=self.colors['primary']
+            ).pack(anchor='w', pady=(5, 0))
 
-        tk.Label(self.main_frame, text="Phone Number:").pack()
-        self.reg_phone_entry = tk.Entry(self.main_frame)
-        self.reg_phone_entry.pack()
+            setattr(self, field_name, tk.Entry(form_container))
+            getattr(self, field_name).pack(fill='x', pady=(0, 10))
 
-        tk.Label(self.main_frame, text="Address:").pack()
-        self.reg_address_entry = tk.Entry(self.main_frame)
-        self.reg_address_entry.pack()
+        # Register button
+        tk.Button(
+            form_container,
+            text="Register",
+            font=self.fonts['button'],
+            bg=self.colors['accent'],
+            fg=self.colors['white'],
+            command=self.register_user
+        ).pack(pady=10)
 
-        tk.Button(self.main_frame, text="Register",
-                  command=self.register_user).pack(pady=5)
-        tk.Button(self.main_frame, text="Back to Login",
-                  command=self.show_login_screen).pack()
+        # Back to Login button
+        tk.Button(
+            form_container,
+            text="Back to Login",
+            font=self.fonts['button'],
+            bg=self.colors['secondary'],
+            fg=self.colors['white'],
+            command=self.show_login_screen
+        ).pack()
 
     # Login as user
     def login_user(self):
