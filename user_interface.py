@@ -1432,8 +1432,53 @@ class AuctionAppUI:
             row=len(fields), column=0, columnspan=2, pady=20)
 
     def admin_edit_item_window(self):
-        # Similar to add_item_window, but pre-fill fields with selected item's data
-        pass
+        # Get the selected item
+        selected_item = self.item_tree.selection()
+        if not selected_item:
+            messagebox.showerror("Error", "No item selected.")
+            return
+
+        # Get the item details
+        item_values = self.item_tree.item(selected_item, 'values')
+        item_id = item_values[0]
+
+        # Create a new window for editing the item
+        win = tk.Toplevel(self.root)
+        win.title("Edit Item")
+        win.geometry("400x400")
+
+        # Form fields
+        fields = [
+            ("Name", "name", item_values[1]),
+            ("Description", "description", item_values[2]),
+            ("Category ID", "category_id", item_values[3]),
+            ("Starting Price", "starting_price", item_values[4]),
+            ("Auction ID", "auction_id", item_values[5])
+        ]
+
+        entries = {}
+        for i, (label, field, value) in enumerate(fields):
+            ttk.Label(win, text=label, style='Custom.TLabel').grid(
+                row=i, column=0, padx=10, pady=10, sticky='w')
+            entry = ttk.Entry(win, style='Custom.TEntry', width=30)
+            entry.insert(0, value)  # Pre-fill the entry with the current value
+            entry.grid(row=i, column=1, padx=10, pady=10)
+            entries[field] = entry
+
+        # Submit button
+        def on_submit():
+            data = {field: entry.get() for field, entry in entries.items()}
+            success = self.db.update_item(
+                item_id, data['name'], data['description'], data['category_id'], data['starting_price'], data['auction_id'])
+            if success:
+                messagebox.showinfo("Success", "Item updated successfully.")
+                self.refresh_item_list()
+                win.destroy()
+            else:
+                messagebox.showerror("Error", "Failed to update item.")
+
+        ttk.Button(win, text="Submit", style='Action.TButton', command=on_submit).grid(
+            row=len(fields), column=0, columnspan=2, pady=20)
 
     def admin_delete_item(self):
         selected_item = self.item_tree.selection()
@@ -1500,6 +1545,11 @@ class AuctionAppUI:
         payment_tab = ttk.Frame(tab_control)
         tab_control.add(payment_tab, text='Payments')
         self.populate_payment_section(payment_tab)
+
+        # Auction Rules tab
+        rules_tab = ttk.Frame(tab_control)
+        tab_control.add(rules_tab, text='Auction Rules')
+        self.populate_auction_rules(rules_tab)
 
         tab_control.pack(expand=1, fill='both')
 
@@ -1701,8 +1751,7 @@ class AuctionAppUI:
         tk.Button(win, text="Place Bid", command=on_place_bid).pack(pady=10)
 
     def populate_auction_rules(self, frame):
-        # Use ttk styling instead of bg option
-        frame.configure(padding=(20, 20))  # Remove bg option
+        frame.configure(padding=(20, 20))
 
         # Header with styled container
         header_frame = ttk.Frame(frame, style='Custom.TFrame')
@@ -1731,7 +1780,6 @@ class AuctionAppUI:
         )
 
         # Rules frame inside canvas
-        # Use tk.Frame for background color
         rules_frame = tk.Frame(canvas, bg=self.colors['white'])
 
         # Rules list

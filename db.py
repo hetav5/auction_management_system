@@ -442,3 +442,25 @@ class Database:
             return False
         finally:
             cursor.close()
+
+    def update_item(self, item_id, name, description, category_id, starting_price, auction_id):
+        """Update an item in the item table."""
+        if not self.connection or not self.connection.is_connected():
+            self.connect()
+
+        cursor = self.connection.cursor()
+        try:
+            query = """
+                UPDATE item
+                SET name = %s, description = %s, category_id = %s, starting_price = %s, auction_id = %s
+                WHERE item_id = %s
+            """
+            cursor.execute(query, (name, description, category_id,
+                           starting_price, auction_id, item_id))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating item: {e}")
+            return False
+        finally:
+            cursor.close()
