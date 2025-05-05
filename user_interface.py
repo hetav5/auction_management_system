@@ -40,7 +40,7 @@ class AuctionAppUI:
 
         # Load only background image
         try:
-            bg_img = Image.open(r'F:\auction\images\reg_bg.jpg')
+            bg_img = Image.open(r'F:\auction\images\reg_bg.png')
             self.bg_image = ImageTk.PhotoImage(bg_img)
         except Exception as e:
             print(f"Warning: Unable to load background image. Error: {e}")
@@ -309,7 +309,8 @@ class AuctionAppUI:
 
         # Create a container for the background
         bg_container = tk.Frame(self.main_frame)
-        bg_container.place(relx=0.5, rely=0.5, anchor='center', width=800, height=600)
+        bg_container.place(relx=0.5, rely=0.5,
+                           anchor='center', width=800, height=600)
 
         # Set background image if available
         try:
@@ -326,7 +327,8 @@ class AuctionAppUI:
         # Create a container for the registration form
         form_container = tk.Frame(
             bg_container,
-            bg=self.colors['light_gray'],  # Use a light gray background for the form
+            # Use a light gray background for the form
+            bg=self.colors['light_gray'],
             padx=40,
             pady=20,
             relief='solid',
@@ -529,6 +531,14 @@ class AuctionAppUI:
             style='Custom.TButton',
             command=self.logout
         ).pack(pady=20)
+
+        # Dark Mode Toggle Button
+        ttk.Button(
+            self.main_frame,
+            text="Toggle Dark Mode",
+            style='Custom.TButton',
+            command=self.toggle_dark_mode
+        ).pack(pady=10)
 
     def populate_user_management(self, frame):
         frame.configure(padding=(20, 20))
@@ -984,7 +994,7 @@ class AuctionAppUI:
                                              vals2["End Date (YYYY-MM-DD)"], reserve_price, current_bid, auctioneer_id, status)
             if success:
                 messagebox.showinfo("Success", "Auction updated")
-                self.refresh_auction_list()
+                self.refresh_uction_list()
                 win.destroy()
             else:
                 messagebox.showerror("Error", "Failed to update auction")
@@ -1541,6 +1551,12 @@ class AuctionAppUI:
     def show_user_dashboard(self):
         self.clear_frame()
 
+        # Fetch user data
+        user_data = self.db.get_user_by_id(self.current_user_id)
+        if not user_data:
+            messagebox.showerror("Error", "Could not fetch user data")
+            return
+
         # Header with styling
         header_frame = ttk.Frame(self.main_frame, style='Custom.TFrame')
         header_frame.pack(fill='x', pady=(0, 20))
@@ -1551,6 +1567,14 @@ class AuctionAppUI:
             font=self.fonts['header'],
             bg=self.colors['primary'],
             fg=self.colors['white']
+        ).pack(pady=10)
+
+        tk.Label(
+            header_frame,
+            text=f"Welcome, {user_data['username']}!",
+            font=self.fonts['header'],
+            bg=self.colors['primary'],
+            fg=self.colors['accent']
         ).pack(pady=10)
 
         # Tab control with styling
@@ -1575,9 +1599,9 @@ class AuctionAppUI:
         self.populate_user_profile(profile_tab)
 
         # Active Auctions tab
-        active_auction_tab = ttk.Frame(tab_control)
+        active_auction_tab = ttk.Frame(tab_control)  # Define the tab here
         tab_control.add(active_auction_tab, text='Active Auctions')
-        self.populate_active_auctions(active_auction_tab)
+        self.populate_active_auctions(active_auction_tab)  # Now this will work
 
         # Feedback tab
         feedback_tab = ttk.Frame(tab_control)
@@ -1603,6 +1627,12 @@ class AuctionAppUI:
             style='Custom.TButton',
             command=self.logout
         ).pack(pady=20)
+
+    def on_enter(self, e):
+        e.widget['background'] = self.colors['secondary']
+
+    def on_leave(self, e):
+        e.widget['background'] = self.colors['primary']
 
     def populate_user_profile(self, frame):
         # First fetch user data
@@ -1749,22 +1779,32 @@ class AuctionAppUI:
                 auction['status']
             ))
 
-    def place_bid_window(self):
-        selected = self.active_auction_tree.selection()
-        if not selected:
-            messagebox.showerror("Error", "Select an auction to place bid")
-            return
-        auction_vals = self.active_auction_tree.item(selected[0])['values']
-        auction_id = auction_vals[0]
-        try:
-            # Convert to float to prevent TypeError
-            current_bid = float(auction_vals[6])
-        except ValueError:
-            messagebox.showerror("Error", "Invalid current bid value.")
-            return
+    def place_bid_window(self, auction_id=None):
+        if not auction_id:
+            selected = self.active_auction_tree.selection()
+            if not selected:
+                messagebox.showerror(
+                    "Error", "Select an auction to place a bid")
+                return
+            auction_vals = self.active_auction_tree.item(selected[0])['values']
+            auction_id = auction_vals[0]
+            try:
+                # Convert to float to prevent TypeError
+                current_bid = float(auction_vals[6])
+            except ValueError:
+                messagebox.showerror("Error", "Invalid current bid value.")
+                return
+        else:
+            # Fetch auction details from the database if auction_id is passed
+            auction = next((a for a in self.db.get_active_auctions()
+                           if a['auction_id'] == auction_id), None)
+            if not auction:
+                messagebox.showerror("Error", "Auction not found.")
+                return
+            current_bid = auction['current_bid']
 
         win = tk.Toplevel(self.root)
-        win.title(f"Place Bid for Auction: {auction_vals[1]}")
+        win.title(f"Place Bid for Auction: {auction_id}")
 
         tk.Label(win, text=f"Current Bid: {current_bid}").pack(pady=5)
 
@@ -1792,6 +1832,40 @@ class AuctionAppUI:
                 messagebox.showerror("Error", "Failed to place bid")
 
         tk.Button(win, text="Place Bid", command=on_place_bid).pack(pady=10)
+
+        auction_frame = tk.Frame(self.main_frame, bg=self.colors['white'])
+        auction_frame.pack(fill='both', expand=True)
+
+        for auction in self.db.get_active_auctions():
+            card = tk.Frame(
+                auction_frame, bg=self.colors['light_gray'], padx=10, pady=10, relief='solid', borderwidth=1)
+            card.pack(fill='x', pady=5)
+
+            tk.Label(
+                card,
+                text=auction['title'],
+                font=self.fonts['subheader'],
+                bg=self.colors['light_gray'],
+                fg=self.colors['primary']
+            ).pack(anchor='w')
+
+            tk.Label(
+                card,
+                text=f"Current Bid: ₹{auction['current_bid']}",
+                font=self.fonts['body'],
+                bg=self.colors['light_gray'],
+                fg=self.colors['secondary']
+            ).pack(anchor='w')
+
+            tk.Button(
+                card,
+                text="Place Bid",
+                font=self.fonts['button'],
+                bg=self.colors['accent'],
+                fg=self.colors['white'],
+                command=lambda a=auction['auction_id']: self.place_bid_window(
+                    a)
+            ).pack(anchor='e', pady=5)
 
     def populate_auction_rules(self, frame):
         frame.configure(padding=(20, 20))
@@ -1947,6 +2021,23 @@ class AuctionAppUI:
         except Exception as e:
             print(f"Error placing bid: {e}")
             return False
+        finally:
+            cursor.close()
+
+    def get_user_name(self, user_id):
+        """Fetch the username of a user by their user_id."""
+        if not self.connection or not self.connection.is_connected():
+            self.connect()
+
+        cursor = self.connection.cursor()
+        try:
+            query = "SELECT username FROM USER WHERE user_id = %s"
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            print(f"Error fetching username: {e}")
+            return None
         finally:
             cursor.close()
 
@@ -2128,3 +2219,16 @@ class AuctionAppUI:
             self.payment_method_combobox.set("")
         else:
             messagebox.showerror("Error", "Failed to submit payment.")
+
+    def toggle_dark_mode(self):
+        if self.colors['primary'] == '#2c3e50':  # Light mode
+            self.colors['primary'] = '#1e1e1e'
+            self.colors['secondary'] = '#2e2e2e'
+            self.colors['white'] = '#121212'
+            self.colors['accent'] = '#bb86fc'
+        else:  # Dark mode
+            self.colors['primary'] = '#2c3e50'
+            self.colors['secondary'] = '#34495e'
+            self.colors['white'] = '#ffffff'
+            self.colors['accent'] = '#3498db'
+        self.show_user_dashboard() if not self.is_admin else self.show_admin_dashboard()
